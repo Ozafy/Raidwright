@@ -1,5 +1,5 @@
 # Description
-A simple World of Warcraft Classic add-on that helps you prepare for raids. It uses the [Syndicator](https://github.com/TheMouseNest/Syndicator) add-on for mail and alt counts, and [Outfitter](https://www.curseforge.com/wow/addons/outfitter) for outfits, so you should install these too.
+A simple World of Warcraft Classic add-on that helps you prepare for raids. It uses the [Syndicator](https://github.com/TheMouseNest/Syndicator) add-on for mail and alt counts, and [Outfitter](https://www.curseforge.com/wow/addons/outfitter-retrofit) for outfits, so you should install these too.
 
 - Overview shows per raid whether you're ready, or what's missing per category
 - Consumables keeps a list per raid with a minimum count per item, and shows if you're short and whether the rest is in your bank, mail or on an alt
