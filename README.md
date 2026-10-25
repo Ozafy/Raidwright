@@ -10,3 +10,16 @@ A simple World of Warcraft Classic add-on that helps you prepare for raids. It u
 Every character has its own lists. Add consumables by shift-clicking or dragging an item into the popup, then set its count.
 
 You can open the addon using the minimap icon or by typing "/rdw" or "/raidwright". You can open the options using the default blizzard options panel or by typing "/rdw o".
+
+# Screenshots
+## Overview
+![Overview](https://raw.github.com/Ozafy/Raidwright/main/Screenshots/Overview.png)
+
+## Consumables
+![Consumables](https://raw.github.com/Ozafy/Raidwright/main/Screenshots/Consumables.png)
+
+## Outfits
+![Outfits](https://raw.github.com/Ozafy/Raidwright/main/Screenshots/Outfits.png)
+
+## World Buffs
+![World Buffs](https://raw.github.com/Ozafy/Raidwright/main/Screenshots/Worldbuffs.png)
