@@ -1,0 +1,5 @@
+package-as: Raidwright
+ignore:
+  - README.md
+  - Screenshots
+license-output: LICENSE
