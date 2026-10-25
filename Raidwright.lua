@@ -108,8 +108,12 @@ function RaidwrightAddon:PLAYER_ENTERING_WORLD(event, isLogin, isReload)
    ScheduleOnce("worldBuffs", RaidwrightNS.RaidwrightData.SaveWorldBuffs, 2)
 end
 
+-- auras can already be gone while logging out or reloading, so only the time is saved here
+-- buffs are saved when they're read on login and whenever they change
 function RaidwrightAddon:PLAYER_LOGOUT()
-   RaidwrightNS.RaidwrightData:SaveWorldBuffs()
+   if RaidwrightAddon.CurrentCharacter.Name then
+      RaidwrightAddon.CurrentCharacter.LastLogout = time()
+   end
 end
 
 function RaidwrightAddon:BANKFRAME_OPENED()

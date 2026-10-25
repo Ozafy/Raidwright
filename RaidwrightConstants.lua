@@ -44,10 +44,11 @@ C["WorldBuffs"] = {
 	{ key = "Ashenvale", spells = { 430352 }, seasonal = true }, -- Spark of Inspiration
 	{ key = "Sunken", spells = { 446695 }, seasonal = true }, -- Fervor of the Temple Explorer
 }
--- Supercharged Chronoboon Displacer, holds world buffs while it's active
+-- "World effect suspended", the aura that holds world buffs while a Chronoboon is filled
+-- newer displacers can use another id for it, so the aura is matched by name as well
 C["ChronoboonSpells"] = { 349981 }
--- casting the displacer stores the active world buffs, the release spell gives them back
-C["ChronoboonStoreSpell"] = 349858
+-- casting a displacer stores the active world buffs, the release spell gives them back
+C["ChronoboonStoreSpells"] = { [349858] = true, [1223679] = true }
 C["ChronoboonReleaseSpell"] = 349863
 
 -- GetSpellInfo is deprecated on newer clients

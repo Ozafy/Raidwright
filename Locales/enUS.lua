@@ -113,4 +113,7 @@ L["OptionDeleteSelected"] = "Delete selected character"
 L["OptionDelete"] = "Delete"
 L["OptionDeleteTooltip"] = "Removes the selected character's world buff data from Raidwright"
 
-L["DefaultLists"] = { "Molten Core", "Onyxia's Lair", "Blackwing Lair", "Zul'Gurub", "Ahn'Qiraj", "Naxxramas" }
+L["RuinsOfAhnQiraj"] = "Ruins of Ahn'Qiraj"
+L["TempleOfAhnQiraj"] = "Temple of Ahn'Qiraj"
+L["OldAhnQiraj"] = "Ahn'Qiraj"
+L["DefaultLists"] = { "Molten Core", "Onyxia's Lair", "Blackwing Lair", "Zul'Gurub", "Ruins of Ahn'Qiraj", "Temple of Ahn'Qiraj", "Naxxramas" }

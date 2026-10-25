@@ -34,6 +34,35 @@ function RaidwrightData:SavePlayerDataLogin()
          table.insert(db.lists, { name = listName, consumables = {}, outfits = {} })
       end
       db.selectedList = 1
+      db.listsVersion = 2
+   end
+   RaidwrightData:MigrateLists(db)
+end
+
+local function CopyTable(source)
+   local copy = {}
+   for key, value in pairs(source) do
+      copy[key] = type(value) == "table" and CopyTable(value) or value
+   end
+   return copy
+end
+
+-- version 2 splits Ahn'Qiraj into Ruins and Temple, both start with what the old list had
+function RaidwrightData:MigrateLists(db)
+   if (db.listsVersion or 1) < 2 then
+      for i, list in ipairs(db.lists) do
+         if list.name == L["OldAhnQiraj"] then
+            local ruins = CopyTable(list)
+            ruins.name = L["RuinsOfAhnQiraj"]
+            list.name = L["TempleOfAhnQiraj"]
+            table.insert(db.lists, i, ruins)
+            if (db.selectedList or 1) > i then
+               db.selectedList = db.selectedList + 1
+            end
+            break
+         end
+      end
+      db.listsVersion = 2
    end
 end
 
@@ -524,13 +553,23 @@ local function GetSpellColumnMap()
    return worldBuffColumns
 end
 
-local function IsChronoboon(spellId)
+local chronoboonNames
+local function IsChronoboon(spellId, name)
+   if not chronoboonNames then
+      chronoboonNames = {}
+      for _, id in ipairs(C["ChronoboonSpells"]) do
+         local spellName = RaidwrightNS.GetSpellInfo(id)
+         if spellName then
+            chronoboonNames[spellName] = true
+         end
+      end
+   end
    for _, id in ipairs(C["ChronoboonSpells"]) do
       if id == spellId then
          return true
       end
    end
-   return false
+   return name ~= nil and chronoboonNames[name] == true
 end
 
 function RaidwrightData:IsSeasonal()
@@ -579,7 +618,7 @@ function RaidwrightData:HasChronoboon()
       if not name then
          break
       end
-      if IsChronoboon(spellId) then
+      if IsChronoboon(spellId, name) then
          return true
       end
    end
@@ -604,7 +643,7 @@ end
 local pendingBoonedBuffs
 
 function RaidwrightData:SpellCastStart(unit, spellId)
-   if unit == "player" and spellId == C["ChronoboonStoreSpell"] then
+   if unit == "player" and C["ChronoboonStoreSpells"][spellId] then
       local buffs = {}
       for _, buff in ipairs(RaidwrightData:GetCurrentWorldBuffs()) do
          buffs[buff.key] = { remaining = buff.remaining, icon = buff.icon, name = buff.name, spellId = buff.spellId }
@@ -618,11 +657,13 @@ function RaidwrightData:SpellCastSucceeded(unit, spellId)
    if unit ~= "player" or not char.Name then
       return
    end
-   if spellId == C["ChronoboonStoreSpell"] and pendingBoonedBuffs then
+   if C["ChronoboonStoreSpells"][spellId] and pendingBoonedBuffs then
       char.BoonedBuffs = pendingBoonedBuffs
+      char.Chronoboon = true
       pendingBoonedBuffs = nil
    elseif spellId == C["ChronoboonReleaseSpell"] then
       char.BoonedBuffs = nil
+      char.Chronoboon = false
    end
    RaidwrightNS.RaidwrightAddon:RefreshFrame()
 end
@@ -642,7 +683,19 @@ function RaidwrightData:GetCharacterWorldBuffs(key)
       local hasBoon = self:HasChronoboon()
       return buffs, hasBoon, true, hasBoon and char.BoonedBuffs or nil
    end
-   return char.WorldBuffs or {}, char.Chronoboon, false, char.Chronoboon and char.BoonedBuffs or nil
+   -- timers kept running between the last save and logging out
+   local played = 0
+   if char.LastLogout and char.WorldBuffsSaved and char.LastLogout > char.WorldBuffsSaved then
+      played = char.LastLogout - char.WorldBuffsSaved
+   end
+   local buffs = {}
+   for buffKey, buff in pairs(char.WorldBuffs or {}) do
+      local remaining = (buff.remaining or 0) - played
+      if remaining > 0 then
+         buffs[buffKey] = setmetatable({ remaining = remaining }, { __index = buff })
+      end
+   end
+   return buffs, char.Chronoboon, false, char.Chronoboon and char.BoonedBuffs or nil
 end
 
 function RaidwrightData:NotifyOnLogin()
