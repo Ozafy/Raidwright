@@ -589,6 +589,41 @@ function RaidwrightData:GetWorldBuffColumns()
    return columns
 end
 
+local scanTooltip
+
+-- the repair cost of an equipped item is only available as a return value of GameTooltip:SetInventoryItem
+local function GetRepairCost(slot)
+   if not scanTooltip then
+      scanTooltip = CreateFrame("GameTooltip", "RaidwrightScanTooltip", nil, "GameTooltipTemplate")
+   end
+   scanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
+   local _, _, repairCost = scanTooltip:SetInventoryItem("player", slot)
+   scanTooltip:Hide()
+   return type(repairCost) == "number" and repairCost or 0
+end
+
+-- live durability of the current character's equipped items
+-- Percent is the overall durability, Lowest the durability of the most damaged item
+function RaidwrightData:GetDurability()
+   local current, maximum, lowest, repairCost = 0, 0, 1, 0
+   for slot = 1, C["EquipmentSlots"] do
+      local cur, max = GetInventoryItemDurability(slot)
+      if cur and max and max > 0 then
+         current = current + cur
+         maximum = maximum + max
+         lowest = math.min(lowest, cur / max)
+         if cur < max then
+            repairCost = repairCost + GetRepairCost(slot)
+         end
+      end
+   end
+   return {
+      Percent = maximum > 0 and current / maximum or 1,
+      Lowest = lowest,
+      RepairCost = repairCost,
+   }
+end
+
 -- live world buffs on the current character
 function RaidwrightData:GetCurrentWorldBuffs()
    local map = GetSpellColumnMap()

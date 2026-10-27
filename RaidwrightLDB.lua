@@ -35,6 +35,11 @@ function RaidwrightLDB:OnTooltipShow(tooltip)
       self:AddLine(" ")
    end
 
+   local durability = RaidwrightNS.RaidwrightData:GetDurability()
+   self:AddDoubleLine(L["Repair"] .. ":", RaidwrightNS:DurabilityText(durability), 1, 1, 1)
+   RaidwrightNS:AddDurabilityLines(self, durability)
+   self:AddLine(" ")
+
    local buffs = RaidwrightNS.RaidwrightData:GetCurrentWorldBuffs()
    self:AddLine(L["WorldBuffs"] .. ":")
    if #buffs == 0 then

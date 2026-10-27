@@ -151,6 +151,24 @@ local function CreateHeader(self)
    self.Hint:SetPoint("BOTTOMLEFT", _PADDING, 30)
    self.Hint:SetText(L["OverviewHint"])
 
+   self.Repair = CreateFrame("Button", nil, self)
+   self.Repair:SetSize(160, 16)
+   self.Repair:SetPoint("BOTTOMRIGHT", -_PADDING, 28)
+   self.Repair.Text = self.Repair:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+   self.Repair.Text:SetAllPoints()
+   self.Repair.Text:SetJustifyH("RIGHT")
+   self.Repair:SetScript("OnEnter", function(button)
+      local durability = RaidwrightNS.RaidwrightData:GetDurability()
+      RaidwrightNS.RaidwrightTooltip:SetOwner(button, "ANCHOR_TOPRIGHT")
+      RaidwrightNS.RaidwrightTooltip:SetText(L["Repair"], 1, 1, 1)
+      if durability.Lowest >= 1 then
+         RaidwrightNS.RaidwrightTooltip:AddLine(L["RepairNotNeeded"], 0.1, 0.9, 0.1)
+      end
+      RaidwrightNS:AddDurabilityLines(RaidwrightNS.RaidwrightTooltip, durability)
+      RaidwrightNS.RaidwrightTooltip:Show()
+   end)
+   self.Repair:SetScript("OnLeave", function() RaidwrightNS.RaidwrightTooltip:Hide() end)
+
    self.WorldBuffs = self:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
    self.WorldBuffs:SetPoint("BOTTOMLEFT", _PADDING, 8)
    self.WorldBuffs:SetPoint("BOTTOMRIGHT", -_PADDING, 8)
@@ -227,6 +245,8 @@ function RaidwrightOverviewFrame:Initialize(self)
       content.Rows[i]:Hide()
    end
    content:SetSize(C["Width"] - 42, math.max(1, _ROW_HEIGHT * #lists))
+
+   self.Repair.Text:SetText(L["Repair"] .. ": " .. RaidwrightNS:DurabilityText(RaidwrightNS.RaidwrightData:GetDurability()))
 
    RaidwrightOverviewFrame:UpdateWorldBuffs(self)
 end

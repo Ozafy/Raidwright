@@ -5,11 +5,14 @@ local L = LibStub("AceLocale-3.0"):GetLocale(AddonName)
 
 local Raidwrighticon = LibStub("LibDBIcon-1.0")
 local RaidwrightOptionsCategory, RaidwrightOptionsLayout = Settings.RegisterVerticalLayoutCategory(AddonName)
+local RaidwrightHideCharacterCategory, RaidwrightHideCharacterLayout = Settings.RegisterVerticalLayoutSubcategory(RaidwrightOptionsCategory, L["OptionHideCharacter"])
 
 local RaidwrightOptions = {}
 RaidwrightNS.RaidwrightOptions = RaidwrightOptions
 RaidwrightNS.RaidwrightOptions.Category = RaidwrightOptionsCategory
 RaidwrightNS.RaidwrightOptions.Layout = RaidwrightOptionsLayout
+RaidwrightNS.RaidwrightOptions.HideCharacterCategory = RaidwrightHideCharacterCategory
+RaidwrightNS.RaidwrightOptions.HideCharacterLayout = RaidwrightHideCharacterLayout
 
 local function OnMinimapSettingChanged(setting, value)
    if value then
@@ -29,12 +32,18 @@ local function SetCharacterToDelete(value)
    charToDelete = value
 end
 
-local function GetAllCharactersSortedByRealmContainer()
+local function GetAllCharactersSortedByRealm()
    local characterNames = {}
    for key, char in pairs(RaidwrightNS.RaidwrightDB.global.characters) do
       table.insert(characterNames, char.Realm .. "-" .. char.Name)
    end
    table.sort(characterNames)
+
+   return characterNames
+end
+
+local function GetAllCharactersSortedByRealmContainer()
+   local characterNames = GetAllCharactersSortedByRealm()
 
    local container = Settings.CreateControlTextContainer()
    container:Add("", L["OptionSelectCharacter"])
@@ -55,6 +64,7 @@ local function DeleteCharacter()
       local cr, cg, cb, web = GetClassColor(char.Class.File)
       RaidwrightNS:Print("Deleting '\124c" .. web .. name .. "\124r' from realm '" .. realm .. "'.")
       RaidwrightNS.RaidwrightDB.global.characters[key] = nil
+      RaidwrightNS.RaidwrightDB.global.hiddenCharacters[key] = nil
    end
    Settings.SetValue("Raidwright_Character_To_Delete", "")
 end
@@ -114,6 +124,29 @@ local function CreateOptionsCategory()
    Settings.RegisterAddOnCategory(RaidwrightOptionsCategory)
 end
 
+local function CreateHideCharacterCategory()
+   local characters = GetAllCharactersSortedByRealm()
+   for i, name in ipairs(characters) do
+      local realm, name = strsplit("-", name, 2)
+      local char = name .. "-" .. realm
+      local hideCharacterSetting = Settings.RegisterAddOnSetting(
+         RaidwrightHideCharacterCategory,
+         "Raidwright_Character_To_Hide" .. i,
+         char,
+         RaidwrightNS.RaidwrightDB.global.hiddenCharacters,
+         Settings.VarType.Boolean,
+         char,
+         Settings.Default.False
+      )
+      hideCharacterSetting:SetValueChangedCallback(function()
+         RaidwrightNS.RaidwrightAddon:RefreshFrame()
+      end)
+      Settings.CreateCheckbox(RaidwrightHideCharacterCategory, hideCharacterSetting, L["OptionHideCharacterTooltipText"])
+   end
+   Settings.RegisterAddOnCategory(RaidwrightHideCharacterCategory)
+end
+
 function RaidwrightOptions:Initialize()
    CreateOptionsCategory()
+   CreateHideCharacterCategory()
 end

@@ -7,16 +7,39 @@ function RaidwrightNS:Print(msg)
    print("|cff33ff99" .. AddonName .. "|r: " .. msg)
 end
 
-function RaidwrightNS:GetRealmCharactersSorted()
+function RaidwrightNS:GetRealmCharactersSorted(includeHidden)
    local characterNames = {}
    local realm = GetNormalizedRealmName()
    for key, char in pairs(self.RaidwrightDB.global.characters) do
-      if char.Realm == realm then
+      if char.Realm == realm and (includeHidden or not self.RaidwrightDB.global.hiddenCharacters[key]) then
          table.insert(characterNames, key)
       end
    end
    table.sort(characterNames)
    return characterNames
+end
+
+-- overall durability percentage, colored by the most damaged item like the armor figure in the game
+function RaidwrightNS:DurabilityText(durability)
+   local color = "ffffff"
+   if durability.Lowest <= 0 then
+      color = "ff1a1a"
+   elseif durability.Lowest <= C["DurabilityWarning"] then
+      color = "ffd100"
+   elseif durability.Percent >= 1 then
+      color = "1ae61a"
+   end
+   return ("|cff%s%d%%|r"):format(color, math.floor(durability.Percent * 100))
+end
+
+-- tooltip lines with the repair cost and the most damaged item
+function RaidwrightNS:AddDurabilityLines(tooltip, durability)
+   if durability.RepairCost > 0 then
+      tooltip:AddDoubleLine(L["RepairCost"], GetCoinTextureString(durability.RepairCost), 1, 0.82, 0, 1, 1, 1)
+   end
+   if durability.Lowest < 1 then
+      tooltip:AddDoubleLine(L["RepairLowestItem"], ("%d%%"):format(math.floor(durability.Lowest * 100)), 1, 0.82, 0, 1, 1, 1)
+   end
 end
 
 function RaidwrightNS:GetItemIDFromLink(link)

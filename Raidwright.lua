@@ -57,12 +57,14 @@ function RaidwrightAddon:OnInitialize()
 		},
       global = {
          characters = {},
+         hiddenCharacters = {},
       }
 	})
    RaidwrightNS.RaidwrightDB = RaidwrightDB
 	icon:Register(AddonName, RaidwrightLDB, RaidwrightDB.profile.minimap)
    if RaidwrightDB.global.dbversion ~= C["MajorDBVersion"] then
       RaidwrightDB.global.characters = {}
+      RaidwrightDB.global.hiddenCharacters = {}
       RaidwrightDB.global.dbversion = C["MajorDBVersion"]
    end
    RaidwrightAddon.CurrentCharacter = {}
@@ -75,6 +77,7 @@ function RaidwrightAddon:OnInitialize()
    self:RegisterEvent("BAG_UPDATE_DELAYED")
    self:RegisterEvent("MAIL_INBOX_UPDATE")
    self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+   self:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
    self:RegisterEvent("UNIT_AURA")
    self:RegisterEvent("UNIT_SPELLCAST_START")
    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
@@ -91,6 +94,7 @@ function RaidwrightAddon:OnDisable()
    self:UnregisterEvent("BAG_UPDATE_DELAYED")
    self:UnregisterEvent("MAIL_INBOX_UPDATE")
    self:UnregisterEvent("PLAYER_EQUIPMENT_CHANGED")
+   self:UnregisterEvent("UPDATE_INVENTORY_DURABILITY")
    self:UnregisterEvent("UNIT_AURA")
    self:UnregisterEvent("UNIT_SPELLCAST_START")
    self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
@@ -143,6 +147,10 @@ function RaidwrightAddon:MAIL_INBOX_UPDATE()
 end
 
 function RaidwrightAddon:PLAYER_EQUIPMENT_CHANGED()
+   ScheduleOnce("refresh", RaidwrightAddon.RefreshFrame, 0.3)
+end
+
+function RaidwrightAddon:UPDATE_INVENTORY_DURABILITY()
    ScheduleOnce("refresh", RaidwrightAddon.RefreshFrame, 0.3)
 end
 

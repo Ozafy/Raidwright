@@ -18,6 +18,7 @@ C["NumBagSlots"] = NUM_BAG_SLOTS or 4
 C["NumBankBagSlots"] = NUM_BANKBAGSLOTS or 6
 C["MaxMailAttachments"] = ATTACHMENTS_MAX_RECEIVE or 12
 C["EquipmentSlots"] = 19
+C["DurabilityWarning"] = 0.25 -- an item at or below this durability shows the repair status in yellow
 -- empty slot backgrounds of the character sheet, by inventory slot id
 C["EquipmentSlotIcons"] = {
 	"Head", "Neck", "Shoulder", "Shirt", "Chest", "Waist", "Legs", "Feet", "Wrists", "Hands",
