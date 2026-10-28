@@ -22,12 +22,33 @@ function RaidwrightLDB:OnTooltipShow(tooltip)
    self:AddLine(" ")
    local list = RaidwrightNS.RaidwrightData:GetSelectedList()
    if list then
-      local short = RaidwrightNS.RaidwrightData:GetShortConsumables(list)
-      if #short > 0 then
+      RaidwrightNS.RaidwrightData:SnapshotOutfits()
+      local readiness = RaidwrightNS.RaidwrightData:GetListReadiness(list)
+      local outfits = {}
+      for _, outfit in ipairs(readiness.outfits.names) do
+         if outfit.state ~= "ready" then
+            table.insert(outfits, outfit)
+         end
+      end
+      if #readiness.consumables.short > 0 or #outfits > 0 then
          self:AddLine(L["ShortHeader"]:format(list.name) .. ":")
-         for _, entry in ipairs(short) do
+         for _, entry in ipairs(readiness.consumables.short) do
             local name, icon = RaidwrightNS:GetItemNameAndIcon(entry.itemID)
-            self:AddDoubleLine("|T" .. (icon or "") .. ":0|t " .. name, entry.status.text, 1, 0.82, 0)
+            self:AddDoubleLine("|T" .. (icon or "") .. ":0|t " .. name, entry.status.text, 1, 0.82, 0, entry.status.r, entry.status.g, entry.status.b)
+         end
+         for _, outfit in ipairs(outfits) do
+            local parts = {}
+            if outfit.inBank > 0 then
+               table.insert(parts, L["OutfitInBank"]:format(outfit.inBank))
+            end
+            if outfit.missing > 0 then
+               table.insert(parts, L["OutfitMissing"]:format(outfit.missing))
+            end
+            local r, g, b = 1, 0.82, 0
+            if outfit.state == "missing" then
+               r, g, b = 1, 0.1, 0.1
+            end
+            self:AddDoubleLine(L["Outfits"] .. ": " .. outfit.name, table.concat(parts, ", "), 1, 0.82, 0, r, g, b)
          end
       else
          self:AddLine(L["AllReady"]:format(list.name), 0, 1, 0)

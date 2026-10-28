@@ -337,19 +337,6 @@ function RaidwrightData:GetConsumableStatus(entry, counts)
    return status
 end
 
-function RaidwrightData:GetShortConsumables(list)
-   local result = {}
-   local bagCounts = self:GetBagCounts()
-   for _, entry in ipairs(list.consumables) do
-      local counts = self:GetItemCounts(entry.itemID, bagCounts)
-      local status = self:GetConsumableStatus(entry, counts)
-      if status.short > 0 then
-         table.insert(result, { itemID = entry.itemID, status = status, counts = counts })
-      end
-   end
-   return result
-end
-
 -- readiness of a list per category, states from good to bad:
 -- "none" (nothing to check), "ready", "bank" (bank or mail), "alts", "missing"
 local STATE_SEVERITY = { none = 0, ready = 1, bank = 2, alts = 3, missing = 4 }
@@ -741,7 +728,7 @@ function RaidwrightData:NotifyOnLogin()
    if not list or #list.consumables == 0 then
       return
    end
-   local short = RaidwrightData:GetShortConsumables(list)
+   local short = RaidwrightData:GetListReadiness(list).consumables.short
    if #short == 0 then
       return
    end
