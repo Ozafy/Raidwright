@@ -1,6 +1,6 @@
 ## Interface: 11509
 ## Title: Raidwright
-## Version: 1.3
+## Version: 1.4
 ## Author: Ozafy
 ## IconTexture: Interface/Icons/inv_potion_62
 ## Notes: Raid preparation: consumables, outfits and world buffs
@@ -27,6 +27,7 @@ RaidwrightOptions.lua
 RaidwrightData.lua
 RaidwrightBank.lua
 RaidwrightItemPopup.lua
+RaidwrightImportExport.lua
 RaidwrightConsumablesFrame.lua
 RaidwrightOutfitsFrame.lua
 RaidwrightWorldBuffsFrame.lua

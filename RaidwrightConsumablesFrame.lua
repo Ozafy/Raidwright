@@ -169,6 +169,50 @@ local function SetCount(fontString, value, known)
    end
 end
 
+-- statuses in the filter menu, ticked ones are shown
+local _FILTER_STATES = { "ready", "bank", "alts", "missing" }
+
+local function IsStateHidden(state)
+   return RaidwrightNS.RaidwrightDB.profile.settings.hiddenStates[state]
+end
+
+local function ToggleState(state, owner)
+   local hiddenStates = RaidwrightNS.RaidwrightDB.profile.settings.hiddenStates
+   hiddenStates[state] = not hiddenStates[state] or nil
+   RaidwrightConsumablesFrame:Initialize(owner)
+end
+
+local filterDropDown
+local function ShowFilterMenu(button, owner)
+   if MenuUtil and MenuUtil.CreateContextMenu then
+      MenuUtil.CreateContextMenu(button, function(_, rootDescription)
+         rootDescription:CreateTitle(L["FilterShow"])
+         for _, state in ipairs(_FILTER_STATES) do
+            rootDescription:CreateCheckbox(L["FilterStates"][state], function() return not IsStateHidden(state) end, function() ToggleState(state, owner) end)
+         end
+      end)
+   else
+      filterDropDown = filterDropDown or CreateFrame("Frame", "RaidwrightFilterDropDown", button, "UIDropDownMenuTemplate")
+      UIDropDownMenu_Initialize(filterDropDown, function(dropDown, level)
+         local title = UIDropDownMenu_CreateInfo()
+         title.text = L["FilterShow"]
+         title.isTitle = true
+         title.notCheckable = true
+         UIDropDownMenu_AddButton(title, level)
+         for _, state in ipairs(_FILTER_STATES) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = L["FilterStates"][state]
+            info.isNotRadio = true
+            info.keepShownOnClick = true
+            info.checked = function() return not IsStateHidden(state) end
+            info.func = function() ToggleState(state, owner) end
+            UIDropDownMenu_AddButton(info, level)
+         end
+      end, "MENU")
+      ToggleDropDownMenu(1, nil, filterDropDown, button, 0, 0)
+   end
+end
+
 local function CreateTopBar(self)
    local refresh = function() RaidwrightNS.RaidwrightAddon:RefreshFrame() end
    self.ListSelector = RaidwrightNS:CreateListSelector(self, refresh)
@@ -201,6 +245,18 @@ local function CreateTopBar(self)
       end, RaidwrightNS.RaidwrightData:GetSelectedIndex())
    end)
 
+   self.ImportExportButton = RaidwrightNS:CreateButton(self, L["ImportExport"], 120)
+   self.ImportExportButton:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -26, 4)
+   RaidwrightNS:SetSimpleTooltip(self.ImportExportButton, L["ImportExport"], L["ImportExportTooltip"])
+   self.ImportExportButton:SetScript("OnClick", function()
+      RaidwrightNS.RaidwrightImportExport:Open(function() RaidwrightConsumablesFrame:Initialize(self) end)
+   end)
+
+   self.FilterButton = RaidwrightNS:CreateButton(self, L["Filter"] .. "  |TInterface\\ChatFrame\\ChatFrameExpandArrow:0|t", 80)
+   self.FilterButton:SetPoint("RIGHT", self.ImportExportButton, "LEFT", -4, 0)
+   RaidwrightNS:SetSimpleTooltip(self.FilterButton, L["Filter"], L["FilterTooltip"])
+   self.FilterButton:SetScript("OnClick", function(button) ShowFilterMenu(button, self) end)
+
    CreateHeader(self, "Item", L["Item"])
    CreateHeader(self, "Needed", L["Needed"])
    CreateHeader(self, "Bags", L["Bags"])
@@ -225,66 +281,80 @@ function RaidwrightConsumablesFrame:Initialize(self)
    self.CopyButton:SetEnabled(list ~= nil and #RaidwrightNS.RaidwrightData:GetLists() > 1)
    self.GrabButton:SetEnabled(list ~= nil and hasBank)
    self.StoreButton:SetEnabled(list ~= nil and hasBank)
+   self.FilterButton:SetEnabled(list ~= nil)
+   self.ImportExportButton:SetEnabled(list ~= nil)
 
-   local scrollFrame = self.ScrollFrame or RaidwrightNS:CreateScrollFrame(self, 0, -62, -22, 20)
+   local scrollFrame = self.ScrollFrame or RaidwrightNS:CreateScrollFrame(self, 0, -62, -22, 30)
    local content = scrollFrame.content
    content.Rows = content.Rows or {}
 
    self.EmptyText = self.EmptyText or content:CreateFontString(nil, "ARTWORK", "GameFontDisable")
    self.EmptyText:SetPoint("TOPLEFT", _PADDING, -10)
-   self.EmptyText:SetText(L["NoConsumables"])
-   self.EmptyText:SetShown(list ~= nil and #list.consumables == 0)
 
-   if RaidwrightNS.RaidwrightData:IsSyndicatorReady() then
-      self.Footer:SetText("")
-   else
-      self.Footer:SetText(L["Syndicator_Not_Ready"])
-   end
-
-   local total = 0
+   local total, hidden = 0, 0
    if list then
       local bagCounts = RaidwrightNS.RaidwrightData:GetBagCounts()
       for i, entry in ipairs(list.consumables) do
-         local row = content.Rows[i] or CreateRow(content, self)
-         content.Rows[i] = row
-         row.entryIndex = i
-         row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -_ROW_HEIGHT * (i - 1))
-         row:Show()
-         row.UpButton:SetEnabled(i > 1)
-         row.DownButton:SetEnabled(i < #list.consumables)
-
-         local name, icon, link, quality = RaidwrightNS:GetItemNameAndIcon(entry.itemID, function()
-            if self:IsVisible() then
-               RaidwrightConsumablesFrame:Initialize(self)
-            end
-         end)
-         row.ItemButton.Texture:SetTexture(icon)
-         row.ItemButton.TooltipItemLink = link or ("item:" .. entry.itemID)
-         RaidwrightNS:CreateInnerBorder(row.ItemButton, quality)
-         row.Name:SetText(name)
-         if quality and quality > -1 then
-            local r, g, b = C_Item.GetItemQualityColor(quality)
-            row.Name:SetTextColor(r, g, b)
-         else
-            row.Name:SetTextColor(1, 1, 1)
-         end
-         if not row.Needed:HasFocus() then
-            row.Needed:SetText(entry.count)
-         end
-
          local counts = RaidwrightNS.RaidwrightData:GetItemCounts(entry.itemID, bagCounts)
-         SetCount(row.Bags, counts.bags, true)
-         SetCount(row.Bank, counts.bank, counts.bankKnown)
-         SetCount(row.Mail, counts.mail, true)
-         SetCount(row.Alts, counts.alts, RaidwrightNS.RaidwrightData:IsSyndicatorReady())
-         row.AltsFrame.details = counts.altDetails
-
          local status = RaidwrightNS.RaidwrightData:GetConsumableStatus(entry, counts)
-         row.Status:SetText(status.text)
-         row.Status:SetTextColor(status.r, status.g, status.b)
-         total = total + 1
+         if IsStateHidden(status.state) then
+            hidden = hidden + 1
+         else
+            total = total + 1
+            local row = content.Rows[total] or CreateRow(content, self)
+            content.Rows[total] = row
+            row.entryIndex = i
+            row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -_ROW_HEIGHT * (total - 1))
+            row:Show()
+            row.UpButton:SetEnabled(i > 1)
+            row.DownButton:SetEnabled(i < #list.consumables)
+
+            local name, icon, link, quality = RaidwrightNS:GetItemNameAndIcon(entry.itemID, function()
+               if self:IsVisible() then
+                  RaidwrightConsumablesFrame:Initialize(self)
+               end
+            end)
+            row.ItemButton.Texture:SetTexture(icon)
+            row.ItemButton.TooltipItemLink = link or ("item:" .. entry.itemID)
+            RaidwrightNS:CreateInnerBorder(row.ItemButton, quality)
+            row.Name:SetText(name)
+            if quality and quality > -1 then
+               local r, g, b = C_Item.GetItemQualityColor(quality)
+               row.Name:SetTextColor(r, g, b)
+            else
+               row.Name:SetTextColor(1, 1, 1)
+            end
+            if not row.Needed:HasFocus() then
+               row.Needed:SetText(entry.count)
+            end
+
+            SetCount(row.Bags, counts.bags, true)
+            SetCount(row.Bank, counts.bank, counts.bankKnown)
+            SetCount(row.Mail, counts.mail, true)
+            SetCount(row.Alts, counts.alts, RaidwrightNS.RaidwrightData:IsSyndicatorReady())
+            row.AltsFrame.details = counts.altDetails
+
+            row.Status:SetText(status.text)
+            row.Status:SetTextColor(status.r, status.g, status.b)
+         end
       end
    end
+
+   if list and #list.consumables == 0 then
+      self.EmptyText:SetText(L["NoConsumables"])
+   elseif hidden > 0 and total == 0 then
+      self.EmptyText:SetText(L["FilterAllHidden"])
+   end
+   self.EmptyText:SetShown(list ~= nil and total == 0)
+
+   local footer = {}
+   if hidden > 0 then
+      table.insert(footer, L["FilterHidden"]:format(hidden))
+   end
+   if not RaidwrightNS.RaidwrightData:IsSyndicatorReady() then
+      table.insert(footer, L["Syndicator_Not_Ready"])
+   end
+   self.Footer:SetText(table.concat(footer, "   "))
    -- rows are only hidden when unused, hiding a row would take the focus from its count box while typing
    for i = total + 1, #content.Rows do
       content.Rows[i]:Hide()

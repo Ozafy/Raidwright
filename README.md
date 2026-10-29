@@ -2,7 +2,7 @@
 A simple World of Warcraft Classic add-on that helps you prepare for raids. It uses the [Syndicator](https://github.com/TheMouseNest/Syndicator) add-on for mail and alt counts, and [Outfitter](https://www.curseforge.com/wow/addons/outfitter-retrofit) for outfits, so you should install these too.
 
 - Overview shows per raid whether you're ready, or what's missing per category
-- Consumables keeps a list per raid with a minimum count per item, and shows if you're short and whether the rest is in your bank, mail or on an alt
+- Consumables keeps a list per raid with a minimum count per item, and shows if you're short and whether the rest is in your bank, mail or on an alt. You can filter it by status, for example to hide everything that's OK, and import or export a list as CSV
 - Outfits lets you pick the Outfitter outfits you need per raid and shows which items are in your bags, bank or missing
 - Get from Bank and Store in Bank move what a raid needs between your bags and bank, outfits can also be stored one by one
 - World Buffs tracks the world buffs of all your characters, including the buffs stored in a Chronoboon

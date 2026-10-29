@@ -154,6 +154,53 @@ function RaidwrightData:CopyConsumablesFrom(index)
    return added
 end
 
+-- one consumable per line, the name is only there to make the text readable
+function RaidwrightData:ExportConsumables()
+   local list = self:GetSelectedList()
+   local lines = { "itemID,count,name" }
+   for _, entry in ipairs(list and list.consumables or {}) do
+      local name = RaidwrightNS:GetItemNameAndIcon(entry.itemID)
+      table.insert(lines, ('%d,%d,"%s"'):format(entry.itemID, entry.count or 0, (name:gsub('"', '""'))))
+   end
+   return table.concat(lines, "\n")
+end
+
+-- reads lines that start with an item id and a count, separated by commas, semicolons or tabs
+-- replace swaps out the whole list, otherwise listed items get the new count and new ones are added
+-- returns the number of imported items and the number of lines that couldn't be read
+function RaidwrightData:ImportConsumables(text, replace)
+   local list = self:GetSelectedList()
+   if not list then
+      return 0, 0
+   end
+   local entries, byItem, skipped = {}, {}, 0
+   for line in text:gmatch("[^\r\n]+") do
+      local itemID, count = line:match('^%s*"?(%d+)"?%s*[,;\t]%s*"?(%d+)"?')
+      itemID, count = tonumber(itemID), tonumber(count)
+      if itemID and count and count > 0 and GetItemInfoInstant(itemID) then
+         if byItem[itemID] then
+            byItem[itemID].count = count
+         else
+            byItem[itemID] = { itemID = itemID, count = count }
+            table.insert(entries, byItem[itemID])
+         end
+      elseif line:match("%S") and not line:lower():match('^%s*"?itemid') then
+         skipped = skipped + 1
+      end
+   end
+   if #entries == 0 then
+      return 0, skipped
+   end
+   if replace then
+      list.consumables = entries
+   else
+      for _, entry in ipairs(entries) do
+         self:SaveConsumable(nil, entry.itemID, entry.count)
+      end
+   end
+   return #entries, skipped
+end
+
 -- swaps the consumable with its neighbour, delta is -1 (up) or 1 (down)
 function RaidwrightData:MoveConsumable(index, delta)
    local list = self:GetSelectedList()
@@ -303,6 +350,7 @@ function RaidwrightData:GetConsumableStatus(entry, counts)
    local need = entry.count or 0
    local status = { short = 0 }
    if counts.bags >= need then
+      status.state = "ready"
       status.text = L["StatusOK"]
       status.r, status.g, status.b = 0, 1, 0
       return status

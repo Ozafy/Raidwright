@@ -53,6 +53,7 @@ function RaidwrightAddon:OnInitialize()
 			},
          settings = {
             hideLoginAlert = false,
+            hiddenStates = {}, -- consumable states the consumables tab doesn't show
          }
 		},
       global = {
