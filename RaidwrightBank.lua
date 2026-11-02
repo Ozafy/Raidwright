@@ -60,36 +60,65 @@ local function FindEmptySlot(bagIDs)
    end
 end
 
--- moves (part of) one stack, returns "moved", "nothing" or "full"
-local function MoveOne(toMove, sourceBags, targetBags)
+-- stacks are never split, every move takes a whole stack
+
+-- storing: the smallest stack that fits within the amount to move, so as many bag slots as possible get cleared
+local function FindStackToStore(toMove, sourceBags)
+   local bestBag, bestSlot, bestCount
+   for _, bag in ipairs(sourceBags) do
+      for slot = 1, C_Container.GetContainerNumSlots(bag) do
+         local info = C_Container.GetContainerItemInfo(bag, slot)
+         local amount = info and toMove[info.itemID]
+         if amount and info.stackCount <= amount and (not bestCount or info.stackCount < bestCount) then
+            bestBag, bestSlot, bestCount = bag, slot, info.stackCount
+         end
+      end
+   end
+   return bestBag, bestSlot
+end
+
+-- getting: the smallest stack that covers what's missing, or else the biggest one, so it takes as few bag slots as possible
+local function FindStackToGrab(toMove, sourceBags)
    for itemID, amount in pairs(toMove) do
       if amount > 0 then
+         local bestBag, bestSlot, bestCount, covers
          for _, bag in ipairs(sourceBags) do
             for slot = 1, C_Container.GetContainerNumSlots(bag) do
                local info = C_Container.GetContainerItemInfo(bag, slot)
                if info and info.itemID == itemID then
-                  local targetBag, targetSlot = FindEmptySlot(targetBags)
-                  if not targetBag then
-                     return "full"
+                  local count = info.stackCount
+                  if count >= amount then
+                     if not covers or count < bestCount then
+                        bestBag, bestSlot, bestCount, covers = bag, slot, count, true
+                     end
+                  elseif not covers and (not bestCount or count > bestCount) then
+                     bestBag, bestSlot, bestCount = bag, slot, count
                   end
-                  if info.stackCount <= amount then
-                     C_Container.UseContainerItem(bag, slot)
-                     return "moved"
-                  end
-                  ClearCursor()
-                  C_Container.SplitContainerItem(bag, slot, amount)
-                  C_Container.PickupContainerItem(targetBag, targetSlot)
-                  return "moved"
                end
             end
          end
+         if bestBag then
+            return bestBag, bestSlot
+         end
       end
    end
-   return "nothing"
 end
 
--- what should go from the bank to the bags for the selected list
-local function GetItemsToGrab()
+-- moves one stack, returns "moved", "nothing" or "full"
+local function MoveOne(toMove, findStack, sourceBags, targetBags)
+   local bag, slot = findStack(toMove, sourceBags)
+   if not bag then
+      return "nothing"
+   end
+   if not FindEmptySlot(targetBags) then
+      return "full"
+   end
+   C_Container.UseContainerItem(bag, slot)
+   return "moved"
+end
+
+-- what should go from the bank to the bags for the selected list, consumables or outfit gear
+local function GetItemsToGrab(forGear)
    local list = RaidwrightNS.RaidwrightData:GetSelectedList()
    local toMove = {}
    if not list then
@@ -98,17 +127,19 @@ local function GetItemsToGrab()
    local bagCounts = RaidwrightNS.RaidwrightData:GetBagCounts()
    local equipped = RaidwrightNS.RaidwrightData:GetEquippedCounts()
    local consumables, gear = RaidwrightNS.RaidwrightData:GetListRequirements(list)
-   for itemID, need in pairs(consumables) do
-      toMove[itemID] = math.max(0, need - (bagCounts[itemID] or 0))
-   end
-   for itemID, need in pairs(gear) do
-      local missing = need - (bagCounts[itemID] or 0) - (equipped[itemID] or 0)
-      toMove[itemID] = math.max(toMove[itemID] or 0, missing)
+   if forGear then
+      for itemID, need in pairs(gear) do
+         toMove[itemID] = math.max(0, need - (bagCounts[itemID] or 0) - (equipped[itemID] or 0))
+      end
+   else
+      for itemID, need in pairs(consumables) do
+         toMove[itemID] = math.max(0, need - (bagCounts[itemID] or 0))
+      end
    end
    return toMove
 end
 
--- tracked items in the bags beyond what the selected list needs
+-- consumables of any list in the bags beyond what the selected list needs, gear the list needs stays too
 local function GetItemsToStore()
    local list = RaidwrightNS.RaidwrightData:GetSelectedList()
    local consumables, gear = {}, {}
@@ -118,7 +149,7 @@ local function GetItemsToStore()
    local bagCounts = RaidwrightNS.RaidwrightData:GetBagCounts()
    local equipped = RaidwrightNS.RaidwrightData:GetEquippedCounts()
    local toMove = {}
-   for itemID in pairs(RaidwrightNS.RaidwrightData:GetAllTrackedItems()) do
+   for itemID in pairs(RaidwrightNS.RaidwrightData:GetAllTrackedConsumables()) do
       local keep = math.max(consumables[itemID] or 0, (gear[itemID] or 0) - (equipped[itemID] or 0))
       local extra = (bagCounts[itemID] or 0) - keep
       if extra > 0 then
@@ -161,7 +192,7 @@ function RaidwrightBank:HasOutfitItemsToStore(outfitName)
    return false
 end
 
-local function Run(getItems, sourceBags, targetBags)
+local function Run(getItems, findStack, sourceBags, targetBags)
    if not bankOpen then
       RaidwrightNS:Print(L["BankNotOpen"])
       return
@@ -181,7 +212,7 @@ local function Run(getItems, sourceBags, targetBags)
       if GetCursorInfo() or AnyItemLocked(sourceBags) or AnyItemLocked(targetBags) then
          return
       end
-      local result = MoveOne(getItems(), sourceBags, targetBags)
+      local result = MoveOne(getItems(), findStack, sourceBags, targetBags)
       if result == "full" then
          RaidwrightBank:Stop(L["BankTransferBagsFull"])
       elseif result == "nothing" then
@@ -190,14 +221,14 @@ local function Run(getItems, sourceBags, targetBags)
    end)
 end
 
-function RaidwrightBank:GrabFromBank()
-   Run(GetItemsToGrab, RaidwrightNS.RaidwrightData:GetBankBagIDs(), RaidwrightNS.RaidwrightData:GetBagIDs())
+function RaidwrightBank:GrabFromBank(forGear)
+   Run(function() return GetItemsToGrab(forGear) end, FindStackToGrab, RaidwrightNS.RaidwrightData:GetBankBagIDs(), RaidwrightNS.RaidwrightData:GetBagIDs())
 end
 
 function RaidwrightBank:StoreInBank()
-   Run(GetItemsToStore, RaidwrightNS.RaidwrightData:GetBagIDs(), RaidwrightNS.RaidwrightData:GetBankBagIDs())
+   Run(GetItemsToStore, FindStackToStore, RaidwrightNS.RaidwrightData:GetBagIDs(), RaidwrightNS.RaidwrightData:GetBankBagIDs())
 end
 
 function RaidwrightBank:StoreOutfitInBank(outfitName)
-   Run(function() return GetOutfitItemsToStore(outfitName) end, RaidwrightNS.RaidwrightData:GetBagIDs(), RaidwrightNS.RaidwrightData:GetBankBagIDs())
+   Run(function() return GetOutfitItemsToStore(outfitName) end, FindStackToStore, RaidwrightNS.RaidwrightData:GetBagIDs(), RaidwrightNS.RaidwrightData:GetBankBagIDs())
 end

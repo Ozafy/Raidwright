@@ -1,6 +1,6 @@
 ## Interface: 11509
 ## Title: Raidwright
-## Version: 1.4
+## Version: 1.5
 ## Author: Ozafy
 ## IconTexture: Interface/Icons/inv_potion_62
 ## Notes: Raid preparation: consumables, outfits and world buffs

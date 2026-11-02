@@ -98,8 +98,8 @@ local function CreateTopBar(self)
 
    self.GrabButton = RaidwrightNS:CreateButton(self, L["GetFromBank"], 110)
    self.GrabButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -26, -6)
-   self.GrabButton:SetScript("OnClick", function() RaidwrightNS.RaidwrightBank:GrabFromBank() end)
-   RaidwrightNS:SetSimpleTooltip(self.GrabButton, L["GetFromBank"], L["GetFromBankTooltip"])
+   self.GrabButton:SetScript("OnClick", function() RaidwrightNS.RaidwrightBank:GrabFromBank(true) end)
+   RaidwrightNS:SetSimpleTooltip(self.GrabButton, L["GetFromBank"], L["GetFromBankOutfitsTooltip"])
 
    self.Hint = self:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
    self.Hint:SetPoint("TOPLEFT", _PADDING, -44)

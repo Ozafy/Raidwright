@@ -455,6 +455,30 @@ function RaidwrightData:GetSlotID(slotName)
    return ok and slotID or nil
 end
 
+-- outfits Outfitter keeps in the built-in equipment manager only cache their items from where the set
+-- thinks they are, which goes stale when items move around, so those are read by item id instead.
+-- nil when the outfit isn't an equipment set or the set can't be read
+function RaidwrightData:GetEquipmentSetItems(outfit)
+   if not outfit.StoredInEM or not C_EquipmentSet or not C_EquipmentSet.GetItemIDs then
+      return nil
+   end
+   local setID = outfit.equipmentSetID or C_EquipmentSet.GetEquipmentSetID(outfit.Name)
+   local itemIDs = setID and C_EquipmentSet.GetItemIDs(setID)
+   if not itemIDs then
+      return nil
+   end
+   local ignored = C_EquipmentSet.GetIgnoredSlots(setID) or {}
+   local slotNames = Outfitter.cSlotIDToInventorySlot or {}
+   local items = {}
+   for slotID, itemID in pairs(itemIDs) do
+      -- 0 is an empty slot and 1 an ignored one
+      if not ignored[slotID] and itemID and itemID > 1 then
+         table.insert(items, { slot = slotNames[slotID], slotID = slotID, itemID = itemID })
+      end
+   end
+   return items
+end
+
 function RaidwrightData:SnapshotOutfits()
    if self:GetOutfitterState() ~= "ready" or not Outfitter.Settings.Outfits then
       return
@@ -469,11 +493,14 @@ function RaidwrightData:SnapshotOutfits()
       seen[categoryID] = true
       for _, outfit in ipairs(Outfitter.Settings.Outfits[categoryID] or {}) do
          if outfit.Name and outfit.Items then
-            local items = {}
-            for slotName, item in pairs(outfit.Items) do
-               local itemID = tonumber(item.Code)
-               if itemID and itemID > 0 then
-                  table.insert(items, { slot = slotName, slotID = self:GetSlotID(slotName), itemID = itemID })
+            local items = self:GetEquipmentSetItems(outfit)
+            if not items then
+               items = {}
+               for slotName, item in pairs(outfit.Items) do
+                  local itemID = tonumber(item.Code)
+                  if itemID and itemID > 0 then
+                     table.insert(items, { slot = slotName, slotID = self:GetSlotID(slotName), itemID = itemID })
+                  end
                end
             end
             -- character sheet order, so outfits are easy to compare
@@ -559,14 +586,10 @@ function RaidwrightData:GetListRequirements(list, excludeOutfit)
 end
 
 -- every item any of the lists tracks, used when storing the leftovers in the bank
-function RaidwrightData:GetAllTrackedItems()
+function RaidwrightData:GetAllTrackedConsumables()
    local tracked = {}
    for _, list in ipairs(self:GetLists()) do
-      local consumables, gear = self:GetListRequirements(list)
-      for itemID in pairs(consumables) do
-         tracked[itemID] = true
-      end
-      for itemID in pairs(gear) do
+      for itemID in pairs(self:GetListRequirements(list)) do
          tracked[itemID] = true
       end
    end

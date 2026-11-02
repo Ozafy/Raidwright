@@ -224,8 +224,8 @@ local function CreateTopBar(self)
 
    self.GrabButton = RaidwrightNS:CreateButton(self, L["GetFromBank"], 110)
    self.GrabButton:SetPoint("RIGHT", self.StoreButton, "LEFT", -4, 0)
-   self.GrabButton:SetScript("OnClick", function() RaidwrightNS.RaidwrightBank:GrabFromBank() end)
-   RaidwrightNS:SetSimpleTooltip(self.GrabButton, L["GetFromBank"], L["GetFromBankTooltip"])
+   self.GrabButton:SetScript("OnClick", function() RaidwrightNS.RaidwrightBank:GrabFromBank(false) end)
+   RaidwrightNS:SetSimpleTooltip(self.GrabButton, L["GetFromBank"], L["GetFromBankConsumablesTooltip"])
 
    self.AddButton = RaidwrightNS:CreateButton(self, L["AddItem"], 90)
    self.AddButton:SetPoint("RIGHT", self.GrabButton, "LEFT", -12, 0)
