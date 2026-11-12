@@ -85,9 +85,25 @@ local function UpdateChronoboonCell(content, i, j, columnWidth, chronoboon, boon
    end)
 end
 
+local function UpdateCooldownCell(content, i, j, columnWidth, cooldown)
+   local cell = content.Cells[i][j] or content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+   content.Cells[i][j] = cell
+   cell:Show()
+   cell:SetWidth(columnWidth)
+   cell:SetJustifyH("CENTER")
+   cell:SetPoint("LEFT", content.ClassIcons[i], "LEFT", _NAME_WIDTH - _PADDING + (j - 1) * columnWidth, 0)
+   if not cooldown then
+      cell:SetText("|cff808080-|r")
+   elseif cooldown > 0 then
+      cell:SetText(RaidwrightNS:TimeSpanToString(cooldown))
+   else
+      cell:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t")
+   end
+end
+
 function RaidwrightWorldBuffsFrame:Initialize(self)
    local columns = RaidwrightNS.RaidwrightData:GetWorldBuffColumns()
-   local columnWidth = GetColumnWidth(#columns + 1)
+   local columnWidth = GetColumnWidth(#columns + 2)
 
    self.NameHeader = self.NameHeader or self:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
    self.NameHeader:SetPoint("TOPLEFT", _PADDING, -16)
@@ -98,6 +114,7 @@ function RaidwrightWorldBuffsFrame:Initialize(self)
    end
    local chronoboonName, _, chronoboonIcon = RaidwrightNS.GetSpellInfo(C["ChronoboonSpells"][1])
    CreateHeaderIcon(self, #columns + 1, chronoboonIcon or 134400, chronoboonName or L["Chronoboon"], L["ChronoboonStored"], _NAME_WIDTH + #columns * columnWidth + (columnWidth - _HEADER_ICON_SIZE) / 2)
+   CreateHeaderIcon(self, #columns + 2, GetItemIcon(C["ChronoboonItems"][1]) or 134400, L["ChronoboonCooldown"], L["ChronoboonCooldownTooltip"], _NAME_WIDTH + (#columns + 1) * columnWidth + (columnWidth - _HEADER_ICON_SIZE) / 2)
 
    local scrollFrame = self.ScrollFrame or RaidwrightNS:CreateScrollFrame(self, 0, -44)
    local content = scrollFrame.content
@@ -139,6 +156,7 @@ function RaidwrightWorldBuffsFrame:Initialize(self)
          end
       end
       UpdateChronoboonCell(content, i, #columns + 1, columnWidth, chronoboon, boonedBuffs, columns)
+      UpdateCooldownCell(content, i, #columns + 2, columnWidth, RaidwrightNS.RaidwrightData:GetChronoboonCooldown(key))
    end
    content:SetSize(C["Width"] - 42, math.max(1, _HEIGHT * #characters))
 

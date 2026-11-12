@@ -82,6 +82,9 @@ function RaidwrightAddon:OnInitialize()
    self:RegisterEvent("UNIT_AURA")
    self:RegisterEvent("UNIT_SPELLCAST_START")
    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+   self:RegisterEvent("BAG_UPDATE_COOLDOWN")
+   self:RegisterEvent("PLAYER_REGEN_ENABLED")
+   self:RegisterEvent("PLAYER_LEVEL_UP")
    RaidwrightNS.RaidwrightOptions:Initialize()
 end
 
@@ -99,6 +102,9 @@ function RaidwrightAddon:OnDisable()
    self:UnregisterEvent("UNIT_AURA")
    self:UnregisterEvent("UNIT_SPELLCAST_START")
    self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+   self:UnregisterEvent("BAG_UPDATE_COOLDOWN")
+   self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+   self:UnregisterEvent("PLAYER_LEVEL_UP")
 end
 
 function RaidwrightAddon:PLAYER_ENTERING_WORLD(event, isLogin, isReload)
@@ -111,6 +117,8 @@ function RaidwrightAddon:PLAYER_ENTERING_WORLD(event, isLogin, isReload)
       RaidwrightAddon:ScheduleTimer(RaidwrightNS.RaidwrightData.NotifyOnLogin, 6)
    end
    ScheduleOnce("worldBuffs", RaidwrightNS.RaidwrightData.SaveWorldBuffs, 2)
+   -- puts back the text of the selected raid, in case the macros were changed elsewhere
+   ScheduleOnce("macros", function() RaidwrightNS.RaidwrightMacros:Apply() end, 2)
 end
 
 -- auras can already be gone while logging out or reloading, so only the time is saved here
@@ -167,6 +175,23 @@ end
 
 function RaidwrightAddon:UNIT_SPELLCAST_SUCCEEDED(event, unit, castGUID, spellId)
    RaidwrightNS.RaidwrightData:SpellCastSucceeded(unit, spellId)
+end
+
+function RaidwrightAddon:BAG_UPDATE_COOLDOWN()
+   ScheduleOnce("chronoboonCooldown", RaidwrightNS.RaidwrightData.SaveChronoboonCooldown, 0.5)
+end
+
+-- UnitLevel can still be the old level during this event, so the new level is taken from its argument
+function RaidwrightAddon:PLAYER_LEVEL_UP(event, level)
+   if RaidwrightAddon.CurrentCharacter.Name then
+      RaidwrightAddon.CurrentCharacter.Level = level
+      RaidwrightAddon:RefreshFrame()
+   end
+end
+
+-- macros can't be changed in combat, a raid switched during combat is applied afterwards
+function RaidwrightAddon:PLAYER_REGEN_ENABLED()
+   RaidwrightNS.RaidwrightMacros:OnCombatEnded()
 end
 
 function RaidwrightAddon:GetMainFrame()
@@ -288,13 +313,15 @@ function RaidwrightAddon:CreateMainFrame()
       Settings.OpenToCategory(RaidwrightNS.RaidwrightOptions.Category:GetID())
    end)
 
-   local overviewView, consumablesView, outfitsView, worldBuffsView = CreateTabs(RaidwrightFrame, L["Overview"], L["Consumables"], L["Outfits"], L["WorldBuffs"])
+   local overviewView, consumablesView, outfitsView, macrosView, worldBuffsView = CreateTabs(RaidwrightFrame, L["Overview"], L["Consumables"], L["Outfits"], L["Macros"], L["WorldBuffs"])
    overviewView.content.LoadContent = RaidwrightNS.RaidwrightOverviewFrame.Initialize
    overviewView.content.Refresh = RaidwrightNS.RaidwrightOverviewFrame.Initialize
    consumablesView.content.LoadContent = RaidwrightNS.RaidwrightConsumablesFrame.Initialize
    consumablesView.content.Refresh = RaidwrightNS.RaidwrightConsumablesFrame.Initialize
    outfitsView.content.LoadContent = RaidwrightNS.RaidwrightOutfitsFrame.Initialize
    outfitsView.content.Refresh = RaidwrightNS.RaidwrightOutfitsFrame.Initialize
+   macrosView.content.LoadContent = RaidwrightNS.RaidwrightMacrosFrame.Initialize
+   macrosView.content.Refresh = RaidwrightNS.RaidwrightMacrosFrame.Initialize
    worldBuffsView.content.LoadContent = RaidwrightNS.RaidwrightWorldBuffsFrame.Initialize
    worldBuffsView.content.Refresh = RaidwrightNS.RaidwrightWorldBuffsFrame.Initialize
 

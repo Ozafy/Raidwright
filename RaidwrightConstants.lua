@@ -18,6 +18,10 @@ C["NumBagSlots"] = NUM_BAG_SLOTS or 4
 C["NumBankBagSlots"] = NUM_BANKBAGSLOTS or 6
 C["MaxMailAttachments"] = ATTACHMENTS_MAX_RECEIVE or 12
 C["EquipmentSlots"] = 19
+-- raid macros, the question mark icon makes the game show the icon of what the macro uses
+C["MacroIcon"] = 134400 -- INV_Misc_QuestionMark
+C["MacroNameMaxLength"] = 16
+C["MacroMaxLength"] = 255
 C["DurabilityWarning"] = 0.25 -- an item at or below this durability shows the repair status in yellow
 -- empty slot backgrounds of the character sheet, by inventory slot id
 C["EquipmentSlotIcons"] = {
@@ -51,6 +55,8 @@ C["ChronoboonSpells"] = { 349981 }
 -- casting a displacer stores the active world buffs, the release spell gives them back
 C["ChronoboonStoreSpells"] = { [349858] = true, [1223679] = true }
 C["ChronoboonReleaseSpell"] = 349863
+-- Chronoboon Displacer and Supercharged Chronoboon Displacer, their cooldown is shown on the world buffs tab
+C["ChronoboonItems"] = { 184937, 184938 }
 
 -- GetSpellInfo is deprecated on newer clients
 function RaidwrightNS.GetSpellInfo(spellId)

@@ -11,6 +11,7 @@ local _ROW_HEIGHT = 40
 local _ICON_SIZE = 28
 local _ICON_PADDING = 4
 local _ICONS_X = 230
+local _HIDE_X = _ICONS_X + 19 * (_ICON_SIZE + _ICON_PADDING) + 2
 
 local STATE_COLORS = {
    have = { 0.1, 0.9, 0.1 },
@@ -25,7 +26,7 @@ local STATE_TEXT = {
 
 local function CreateRow(content, owner)
    local row = CreateFrame("Frame", nil, content)
-   row:SetSize(C["Width"] - 50, _ROW_HEIGHT)
+   row:SetSize(C["Width"] - 42, _ROW_HEIGHT)
 
    row.Check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
    row.Check:SetSize(26, 26)
@@ -89,6 +90,23 @@ local function CreateRow(content, owner)
       end)
       row.Items[slotID] = button
    end
+
+   -- hides the outfit from this tab, or shows it again while hidden outfits are listed
+   row.HideButton = CreateFrame("Button", nil, row)
+   row.HideButton:SetSize(18, 18)
+   row.HideButton:SetPoint("LEFT", row, "LEFT", _HIDE_X, 0)
+   row.HideButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+   row.HideButton:SetScript("OnClick", function()
+      RaidwrightNS.RaidwrightData:SetOutfitHidden(row.outfitName, not row.hidden)
+      RaidwrightOutfitsFrame:Initialize(owner)
+   end)
+   row.HideButton:SetScript("OnEnter", function(self)
+      RaidwrightNS.RaidwrightTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      RaidwrightNS.RaidwrightTooltip:SetText(row.hidden and L["UnhideOutfit"] or L["HideOutfit"], 1, 1, 1)
+      RaidwrightNS.RaidwrightTooltip:AddLine(row.hidden and L["UnhideOutfitTooltip"] or L["HideOutfitTooltip"], nil, nil, nil, true)
+      RaidwrightNS.RaidwrightTooltip:Show()
+   end)
+   row.HideButton:SetScript("OnLeave", function() RaidwrightNS.RaidwrightTooltip:Hide() end)
    return row
 end
 
@@ -100,6 +118,14 @@ local function CreateTopBar(self)
    self.GrabButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -26, -6)
    self.GrabButton:SetScript("OnClick", function() RaidwrightNS.RaidwrightBank:GrabFromBank(true) end)
    RaidwrightNS:SetSimpleTooltip(self.GrabButton, L["GetFromBank"], L["GetFromBankOutfitsTooltip"])
+
+   self.ShowHidden = CreateFrame("CheckButton", nil, self, "UICheckButtonTemplate")
+   self.ShowHidden:SetSize(24, 24)
+   self.ShowHidden:SetPoint("RIGHT", self.GrabButton, "LEFT", -140, 0)
+   self.ShowHidden.Label = self.ShowHidden:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+   self.ShowHidden.Label:SetPoint("LEFT", self.ShowHidden, "RIGHT", 2, 0)
+   self.ShowHidden:SetScript("OnClick", function() RaidwrightOutfitsFrame:Initialize(self) end)
+   RaidwrightNS:SetSimpleTooltip(self.ShowHidden, L["ShowHiddenOutfits"], L["ShowHiddenOutfitsTooltip"])
 
    self.Hint = self:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
    self.Hint:SetPoint("TOPLEFT", _PADDING, -44)
@@ -117,13 +143,27 @@ function RaidwrightOutfitsFrame:Initialize(self)
 
    RaidwrightNS.RaidwrightData:SnapshotOutfits()
    local state = RaidwrightNS.RaidwrightData:GetOutfitterState()
-   local outfits = RaidwrightNS.RaidwrightData:GetOutfits()
+   local allOutfits = RaidwrightNS.RaidwrightData:GetOutfits()
+   local showHidden = self.ShowHidden:GetChecked()
+   local outfits, hiddenCount = {}, 0
+   for _, outfit in ipairs(allOutfits) do
+      local hidden = RaidwrightNS.RaidwrightData:IsOutfitHidden(outfit.name)
+      if hidden then
+         hiddenCount = hiddenCount + 1
+      end
+      if showHidden or not hidden then
+         table.insert(outfits, outfit)
+      end
+   end
+   self.ShowHidden.Label:SetText(L["ShowHiddenOutfitsCount"]:format(hiddenCount))
    if state == "missing" then
       self.Message:SetText(L["OutfitterMissing"])
    elseif state == "loading" then
       self.Message:SetText(L["OutfitterNotReady"])
-   elseif #outfits == 0 then
+   elseif #allOutfits == 0 then
       self.Message:SetText(L["NoOutfits"])
+   elseif #outfits == 0 then
+      self.Message:SetText(L["AllOutfitsHidden"])
    else
       self.Message:SetText("")
    end
@@ -144,12 +184,16 @@ function RaidwrightOutfitsFrame:Initialize(self)
          local row = content.Rows[i] or CreateRow(content, self)
          content.Rows[i] = row
          row.outfitName = outfit.name
+         row.hidden = RaidwrightNS.RaidwrightData:IsOutfitHidden(outfit.name)
+         row:SetAlpha(row.hidden and 0.5 or 1)
+         row.HideButton:SetNormalTexture(row.hidden and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+         row.HideButton:Show()
          row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -_ROW_HEIGHT * (i - 1))
          row:Show()
 
          local selected = list.outfits and list.outfits[outfit.name] or false
          row.Check:SetChecked(selected)
-         row.Name:SetText(outfit.name)
+         row.Name:SetText(row.hidden and (outfit.name .. " " .. L["OutfitHiddenSuffix"]) or outfit.name)
          row.StoreButton:SetEnabled(RaidwrightNS.RaidwrightBank:IsBankOpen() and RaidwrightNS.RaidwrightBank:HasOutfitItemsToStore(outfit.name))
 
          local status = RaidwrightNS.RaidwrightData:GetOutfitStatus(outfit, bagCounts, equippedCounts)

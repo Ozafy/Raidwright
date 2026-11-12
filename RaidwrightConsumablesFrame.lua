@@ -294,8 +294,9 @@ function RaidwrightConsumablesFrame:Initialize(self)
    local total, hidden = 0, 0
    if list then
       local bagCounts = RaidwrightNS.RaidwrightData:GetBagCounts()
+      local equippedCounts = RaidwrightNS.RaidwrightData:GetEquippedCounts()
       for i, entry in ipairs(list.consumables) do
-         local counts = RaidwrightNS.RaidwrightData:GetItemCounts(entry.itemID, bagCounts)
+         local counts = RaidwrightNS.RaidwrightData:GetItemCounts(entry.itemID, bagCounts, equippedCounts)
          local status = RaidwrightNS.RaidwrightData:GetConsumableStatus(entry, counts)
          if IsStateHidden(status.state) then
             hidden = hidden + 1

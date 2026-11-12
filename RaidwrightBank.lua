@@ -133,7 +133,7 @@ local function GetItemsToGrab(forGear)
       end
    else
       for itemID, need in pairs(consumables) do
-         toMove[itemID] = math.max(0, need - (bagCounts[itemID] or 0))
+         toMove[itemID] = math.max(0, need - (bagCounts[itemID] or 0) - (equipped[itemID] or 0))
       end
    end
    return toMove
@@ -150,7 +150,8 @@ local function GetItemsToStore()
    local equipped = RaidwrightNS.RaidwrightData:GetEquippedCounts()
    local toMove = {}
    for itemID in pairs(RaidwrightNS.RaidwrightData:GetAllTrackedConsumables()) do
-      local keep = math.max(consumables[itemID] or 0, (gear[itemID] or 0) - (equipped[itemID] or 0))
+      -- what's equipped counts towards both
+      local keep = math.max(consumables[itemID] or 0, gear[itemID] or 0) - (equipped[itemID] or 0)
       local extra = (bagCounts[itemID] or 0) - keep
       if extra > 0 then
          toMove[itemID] = extra

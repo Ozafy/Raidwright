@@ -7,11 +7,17 @@ function RaidwrightNS:Print(msg)
    print("|cff33ff99" .. AddonName .. "|r: " .. msg)
 end
 
+-- only characters at the level cap raid, a character saved before levels were kept counts until its next login
+function RaidwrightNS:IsTrackedLevel(char)
+   return char.Level == nil or char.Level >= (GetMaxPlayerLevel and GetMaxPlayerLevel() or 60)
+end
+
 function RaidwrightNS:GetRealmCharactersSorted(includeHidden)
    local characterNames = {}
    local realm = GetNormalizedRealmName()
    for key, char in pairs(self.RaidwrightDB.global.characters) do
-      if char.Realm == realm and (includeHidden or not self.RaidwrightDB.global.hiddenCharacters[key]) then
+      if char.Realm == realm and self:IsTrackedLevel(char)
+         and (includeHidden or not self.RaidwrightDB.global.hiddenCharacters[key]) then
          table.insert(characterNames, key)
       end
    end

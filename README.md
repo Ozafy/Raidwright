@@ -5,7 +5,8 @@ A simple World of Warcraft Classic add-on that helps you prepare for raids. It u
 - Consumables keeps a list per raid with a minimum count per item, and shows if you're short and whether the rest is in your bank, mail or on an alt. You can filter it by status, for example to hide everything that's OK, and import or export a list as CSV
 - Outfits lets you pick the Outfitter outfits you need per raid and shows which items are in your bags, bank or missing
 - Get from Bank and Store in Bank move what a raid needs between your bags and bank, outfits can also be stored one by one
-- World Buffs tracks the world buffs of all your characters, including the buffs stored in a Chronoboon
+- Macros gives a character macro a different text per raid, so one keybind can use a snowball in one raid and hourglass sand in another. Its text switches whenever you select another raid
+- World Buffs tracks the world buffs of all your level 60 characters, including the buffs stored in a Chronoboon
 
 Every character has its own lists. Add consumables by shift-clicking or dragging an item into the popup, then set its count.
 

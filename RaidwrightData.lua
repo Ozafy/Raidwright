@@ -22,6 +22,7 @@ function RaidwrightData:SavePlayerDataLogin()
    char.Faction = UnitFactionGroup("player")
    local className, classFile = UnitClass("player")
    char.Class = { Name = className, File = classFile }
+   char.Level = UnitLevel("player")
    char.WorldBuffs = char.WorldBuffs or {}
    RaidwrightNS.RaidwrightDB.global.characters[key] = char
    RaidwrightNS.RaidwrightAddon.CurrentCharacter = char
@@ -89,12 +90,14 @@ end
 
 function RaidwrightData:SelectList(index)
    CharDB().selectedList = index
+   RaidwrightNS.RaidwrightMacros:Apply()
 end
 
 function RaidwrightData:AddList(name)
    local lists = CharDB().lists
    table.insert(lists, { name = name, consumables = {}, outfits = {} })
    CharDB().selectedList = #lists
+   RaidwrightNS.RaidwrightMacros:Apply()
 end
 
 function RaidwrightData:RenameSelectedList(name)
@@ -109,6 +112,7 @@ function RaidwrightData:DeleteSelectedList()
    if index then
       table.remove(CharDB().lists, index)
       CharDB().selectedList = math.max(1, index - 1)
+      RaidwrightNS.RaidwrightMacros:Apply()
    end
 end
 
@@ -301,12 +305,13 @@ local function GetSyndicatorInfo(itemID)
 end
 
 -- returns where the current character has the item, plus what alts on the same realm and faction have
--- bags are always live, bank and mail come from our own scan and fall back to Syndicator's data
-function RaidwrightData:GetItemCounts(itemID, bagCounts)
+-- bags are always live and include what's equipped, bank and mail come from our own scan and fall back to Syndicator's data
+function RaidwrightData:GetItemCounts(itemID, bagCounts, equippedCounts)
    bagCounts = bagCounts or self:GetBagCounts()
+   equippedCounts = equippedCounts or self:GetEquippedCounts()
    local db = CharDB()
    local counts = {
-      bags = bagCounts[itemID] or 0,
+      bags = (bagCounts[itemID] or 0) + (equippedCounts[itemID] or 0),
       bank = db.bank and db.bank[itemID] or 0,
       mail = db.mail and db.mail[itemID] or 0,
       alts = 0,
@@ -403,7 +408,7 @@ function RaidwrightData:GetListReadiness(list, bagCounts, equippedCounts)
       consumables.state = "ready"
    end
    for _, entry in ipairs(list.consumables) do
-      local status = self:GetConsumableStatus(entry, self:GetItemCounts(entry.itemID, bagCounts))
+      local status = self:GetConsumableStatus(entry, self:GetItemCounts(entry.itemID, bagCounts, equippedCounts))
       if status.short > 0 then
          table.insert(consumables.short, { itemID = entry.itemID, status = status })
          consumables.state = WorseState(consumables.state, status.state)
@@ -522,6 +527,18 @@ end
 
 function RaidwrightData:GetOutfits()
    return CharDB().outfits or {}
+end
+
+-- outfits hidden from the outfits tab, e.g. ones that are always carried
+function RaidwrightData:IsOutfitHidden(name)
+   local hidden = CharDB().hiddenOutfits
+   return hidden ~= nil and hidden[name] == true
+end
+
+function RaidwrightData:SetOutfitHidden(name, hidden)
+   local db = CharDB()
+   db.hiddenOutfits = db.hiddenOutfits or {}
+   db.hiddenOutfits[name] = hidden or nil
 end
 
 function RaidwrightData:GetOutfitByName(name)
@@ -730,6 +747,46 @@ function RaidwrightData:SaveWorldBuffs()
    char.WorldBuffs = saved
    char.Chronoboon = RaidwrightData:HasChronoboon()
    char.WorldBuffsSaved = time()
+   RaidwrightData:SaveChronoboonCooldown()
+end
+
+local function GetItemCooldown(itemID)
+   if C_Container and C_Container.GetItemCooldown then
+      return C_Container.GetItemCooldown(itemID)
+   end
+   return _G.GetItemCooldown(itemID)
+end
+
+-- saves when the displacer cooldown of the current character ends, as a time() so it keeps counting while offline
+-- 0 means it's ready, nil that the character has no displacer we know of
+function RaidwrightData:SaveChronoboonCooldown()
+   local char = RaidwrightNS.RaidwrightAddon.CurrentCharacter
+   if not char or not char.Name then
+      return
+   end
+   local endsAt, owned = 0, false
+   for _, itemID in ipairs(C["ChronoboonItems"]) do
+      local counts = RaidwrightData:GetItemCounts(itemID)
+      if counts.bags + counts.bank + counts.mail > 0 then
+         owned = true
+      end
+      local start, duration, enabled = GetItemCooldown(itemID)
+      -- short ones are the global cooldown
+      if start and start > 0 and duration and duration > 1.5 and enabled ~= 0 and enabled ~= false then
+         owned = true
+         endsAt = math.max(endsAt, time() + start + duration - GetTime())
+      end
+   end
+   char.ChronoboonCooldownEnd = owned and math.floor(endsAt) or nil
+end
+
+-- seconds left on a character's displacer cooldown, 0 when ready, nil when it has no displacer we know of
+function RaidwrightData:GetChronoboonCooldown(key)
+   local char = key and RaidwrightNS.RaidwrightDB.global.characters[key]
+   if not char or not char.ChronoboonCooldownEnd then
+      return nil
+   end
+   return math.max(0, char.ChronoboonCooldownEnd - time())
 end
 
 -- the buffs are gone once the cast succeeds, so take the snapshot when it starts
